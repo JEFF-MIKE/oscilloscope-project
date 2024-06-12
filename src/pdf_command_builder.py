@@ -3,6 +3,7 @@ import pprint
 import pymupdf
 import json
 import re
+import enum
 
 from typing import Final, TypedDict
 
@@ -12,6 +13,15 @@ class CommandDetails(TypedDict):
     return_description: str
     is_implemented: bool
     parameters: dict | None = None
+
+class ReturnElement(enum.Enum):
+    NR1_FORMAT = "NR1"
+    NR3_FORMAT = "NR3"
+    UNQUOTED_STRING = "UNQUOTED"
+    QUOTED_STRING = "QUOTED"
+    ENUM_FORMAT = "ENUM"
+    INLINE_ENUM_FORMAT = "INLINE_ENUM"
+    UNKNOWN = "UNKNOWN"
 
 file_path = os.path.join(os.getcwd(), '..', 'example.pdf')
 
@@ -71,35 +81,6 @@ nr1_format_count = 0
 scope_return_values_count = {}
 
 single_range_pair = {}
-# Process the command parameters and return a dictionary of the command parameters
-
-# Try just doing it with the range for now.
-
-# Note: I think for a value to be optional, it has to be an angled bracket element '<>' surrounded by square brackets '[]'.
-
-# For the ranges, it looks like they can be hard defined inside the command, or set as an angled bracket variable, that contains
-# values inside the "options and return queries" column.
-
-# def get_parameter_details(formatted_command: str) -> dict:
-#     # For now, process the range and optional parameters
-#     options = {}
-#     brackets_stack = []
-#     for character in formatted_command:
-#         if character == '[' or character == '{':
-#             brackets_stack.append(character)
-#             if character == '[':
-#                 # This is an optional parameter
-#                 options['optional'] = True
-#             elif character == '{':
-#                 options['enum'] = True
-
-def is_single_variable_range(formatted_command: str) -> bool:
-    COUNT_DICTIONARY  = { key: 0 for key in ENUM_BRACES + ANGLE_BRACKETS } 
-    for bracket in COUNT_DICTIONARY.keys():
-        COUNT_DICTIONARY[bracket] = formatted_command.count(bracket)
-        if COUNT_DICTIONARY[bracket] != 1:
-            return False
-    return True
 
 def command_has_inline_range(formatted_command: str) -> bool:
     # Sometimes, the command will state the options it can accept, so use this function to check for that
@@ -111,17 +92,47 @@ def command_has_inline_range(formatted_command: str) -> bool:
             return False
     return True
 
-def get_inline_command_params(formatted_command: str) -> dict:
+def get_bracket_count(formatted_string: str) -> dict:
+    return { bracket: formatted_string.count(bracket) for bracket in BRACKETED_SYNTAX }
+
+# Note: There exists some text with misaligned brackets inside the PDF, so at some stage we will be required to
+# account for that.
+def has_no_named_variables(bracket_count: dict) -> bool:
+    return bracket_count['<'] == 0 and bracket_count['>'] == 0
+ 
+def has_single_named_variable(bracket_count: dict) -> bool:
+    return bracket_count['<'] == 1 and bracket_count['>'] == 1
+
+def has_enum_range_defined(bracket_count):
+    return bracket_count['{'] >= 1 and bracket_count['}'] >= 1
+
+def get_enum_values(formatted_command: str) -> list[str]:
     new_command = formatted_command
-    # We want to replace the nested 0 (OFF) and 1 (ON) just with the strings, to avoid nested ors
+    # Flatten the nested enums - they are set values, and this allows for easier processing
     if formatted_command.count('}') > 1:
-        new_command = formatted_command.replace(" ", "").replace("{0|OFF}, OFF").replace("{1|ON}, ON")
+        new_command = formatted_command.replace(" ", "").replace("{0|OFF}", "OFF").replace("{1|ON}", "ON")
         # handle the one command that has the {{1|2}|{3|4}} format :)
         new_command = new_command.replace("{1|2}|{3|4}", "1|2|3|4")
     # "new_command" should deal with the nested brackets, so now the option can be placed in as a single
-    return {
-        'inline_range_command': new_command.split('|')
-    }
+    string_to_get = re.findall(r'{(.*?)}', new_command)
+    return string_to_get[0].split('|')
+
+def determine_value_type(return_line_description: str) -> ReturnElement:
+    line_to_target = return_line_description.lower()
+    if 'nr1' in line_to_target:
+        return ReturnElement.NR1_FORMAT
+    elif 'nr3' in line_to_target:
+        return ReturnElement.NR3_FORMAT
+    elif 'unquoted' in line_to_target:
+        return ReturnElement.UNQUOTED_STRING
+    elif 'quoted' in line_to_target:
+        return ReturnElement.QUOTED_STRING
+    elif has_enum_range_defined(get_bracket_count(line_to_target)):
+        return ReturnElement.ENUM_FORMAT
+    else:
+        return ReturnElement.UNKNOWN
+
+
 
 def get_option_names(formatted_command: str) -> None:
     variable_stack = []
@@ -168,49 +179,82 @@ for page in doc:
                     for command, query, return_description in focused_table[1:]:
                         detailed_command_dictionary = {}
                         has_variables_in_command = False
+                        has_inline_variables_in_command = False
+                        has_variables_in_query = False
+                        has_inline_variables_in_query = False
+                        detailed_command_params: dict[list] = {}
+                        command_variable_names: list[str] = []
+                        query_variable_names: list[str] = []
+                        parameter_list: list[dict] = []
+                        detailed_command_dictionary['parameters'] = parameter_list
                         # The text inside the PDF has awkward formatting, so it needs some cleaning up
                         if (formatted_command := command.split('(')[0].replace('\n', '').rstrip()) != 'n/a':
                             scope_commands[category].append(formatted_command)
                             print(f'Formatted command is: {formatted_command}')
                             # This deals with named commands
-                            has_variables_in_command = len(re.findall(r'<(.*?)>', formatted_command)) > 0
+                            command_variable_names = re.findall(r'<(.*?)>', formatted_command)
+                            has_variables_in_command = len(command_variable_names) > 0
                             # Some commands may contain a range of values. These are inline enums, not defined in the return items at all.
                             # We'll list them as inline enums
                             detailed_command_dictionary['command_name'] = formatted_command
-                            if formatted_command.count('<') == 0:
-                                # TODO: Maybe improve this to deal with nested commands, but will work for now.
-                                if command_has_inline_range(formatted_command):
-                                    detailed_command_dictionary['parameters'] = get_inline_command_params(formatted_command)
+                            bracket_count = get_bracket_count(formatted_command)
+                            # inline command params dealt with here
+                            if has_no_named_variables(bracket_count) and has_enum_range_defined(bracket_count):
+                                inline_command_range = get_enum_values(formatted_command)
+                                has_inline_variables_in_command = True
+                                detailed_command_dictionary['parameters'].append({
+                                    'INLINE_COMMAND_PARAMS': inline_command_range
+                                })
                         if (formatted_query := query.split('(')[0].replace('\n', '').rstrip()) != 'n/a':
                             scope_queries[category].append(formatted_query)
+                            query_variable_names = re.findall(r'<(.*?)>', formatted_query)
+                            has_variables_in_query = len(query_variable_names) > 0
                             if any(bracket in formatted_query for bracket in BRACKETED_SYNTAX):
                                 # enter the function to get option details
                                 # query_parameter_details = get_parameter_details()
                                 get_option_names(formatted_query)
                             detailed_command_dictionary['query'] = formatted_query
+                            bracket_count = get_bracket_count(formatted_query)
+                            if has_no_named_variables(bracket_count) and has_enum_range_defined(bracket_count):
+                                inline_query_range = get_enum_values(formatted_query)
+                                has_inline_variables_in_query = True
+                                detailed_command_params['INLINE_QUERY_PARAMS'] = inline_query_range
                         formatted_return_description = return_description.replace('\n', '').rstrip()
-                        if 'in NR1 format' in formatted_return_description:
-                            nr1_format_count += 1
                         if formatted_return_description in scope_return_values_count:
                             scope_return_values_count[formatted_return_description] += 1
                         else:
                             scope_return_values_count[formatted_return_description] = 1
-                        if has_variables_in_command and is_single_variable_range(formatted_return_description):
-                            # get the indexes of the brackets, and convert the string to a python set,
-                            # with key being name of command in "<banana>" format
-                            variable_name_capture = re.findall(r'<(.*?)>', formatted_return_description)
-                            print(f'Variable name capture is: {variable_name_capture}')
-                            variable_name_set = re.findall(r'{(.*?)}', formatted_return_description)
-                            formatted_variable_name_list = [item.strip(" ") for item in variable_name_set[0].split('|')]
-                            print(f'Variable name set is: {formatted_variable_name_list}')
-                            detailed_command_dictionary['is_implemented'] = True
-                            detailed_command_dictionary['parameters'] = {
-                                variable_name_capture[0]: formatted_variable_name_list
-                            }
+                        if has_variables_in_command or has_variables_in_query:
+                            # divide out the variables from the return description, and process them with the command ones
+                            divided_out_variables = re.findall(r'<.*?>.*?(?=<|$)', formatted_return_description)
+                            for section in divided_out_variables:
+                                print(f'Section is: {section}')
+                                [return_description_variable] = re.findall(r'<(.*?)>', section)
+                                if return_description_variable == 'return_value':
+                                    continue
+                                print(f'Variable name capture is: {return_description_variable}')
+                                value_type = determine_value_type(section)
+                                if value_type == ReturnElement.ENUM_FORMAT:
+                                    enum_variables = re.findall(r'{(.*?)}', formatted_return_description)
+                                    formatted_variable_name_list = [item.strip(" ") for item in enum_variables[0].split('|')]
+                                    print(f'Variable name set is: {formatted_variable_name_list}')
+                                    detailed_command_dictionary['parameters'].append(
+                                        {
+                                            return_description_variable: formatted_variable_name_list
+                                        }
+                                    )
+                                    detailed_command_dictionary['is_implemented'] = True
+                                    continue
+                                elif value_type == ReturnElement.UNKNOWN:
+                                    print(f'Unknown return type: {section}')
+                                    detailed_command_dictionary['is_implemented'] = False
+                                    continue
+                                detailed_command_dictionary['is_implemented'] = True
+                                detailed_command_dictionary['parameters'].append({
+                                    return_description_variable: value_type.value
+                                })
                         detailed_command_dictionary['return_description'] = formatted_return_description
                         detailed_commands_by_category[category].append(detailed_command_dictionary)
-                
-
 
 
 
