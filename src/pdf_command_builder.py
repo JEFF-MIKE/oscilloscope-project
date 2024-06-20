@@ -216,7 +216,7 @@ def write_command_data_to_file(output_file_path: str, scope_queries: dict, scope
         }
     }
     print(f'Writing command data to {output_file_path}...')
-    with open(os.path.join(output_file_path), 'w') as f:
+    with open(os.path.join(output_file_path), 'w', encoding='utf8') as f:
         try:
             json.dump(data_to_write, f, indent=4)
             print('Successfully wrote to file without errors!')
