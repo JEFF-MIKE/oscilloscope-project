@@ -1,19 +1,9 @@
 #:kivy 2.3.0
 
-<CustomButton@Button>:
-    background_color: 1, 1, 1, 1  # White background
-    color: 0, 0, 0, 1  # Black text
-    font_size: '20sp'
-    size_hint_y: None
-    height: '48dp'
-    # on_press: self.is_pressed = not self.is_pressed; self.background_color = (0, 0, 1, 1) if self.is_pressed else (1, 1, 1, 1)
-
 <RV>:
-    viewclass: 'CustomButton'
-    size_hint_x: 0.25
-    pos_hint: {'x': 0}
+    viewclass: 'LabelledButton'
     RecycleBoxLayout:
-        default_size: None, dp(56)
+        default_size: dp(25), dp(56)
         default_size_hint: 1, None
         size_hint_y: None
         height: self.minimum_height
