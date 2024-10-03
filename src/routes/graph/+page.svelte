@@ -1,16 +1,29 @@
 <script lang="ts">
     import SyncedBrushWrapper from '$lib/components/graphing/SyncedBrushWrapper.svelte';
+    import { page } from '$app/stores';
+    import { trpc } from '$lib/trpc.js';
+    import Button, { Label } from '@smui/button';
+    import ScopeLaunchFetcher from '$lib/components/graphing/scopeData/ScopeLaunchFetcher.svelte';
+	  import ScopePoints from '$lib/components/graphing/scopeData/ScopePoints.svelte';
+
     export let data;
 
     let brushExtents = [null, null];
     const xKey = "time_seconds";
     const yKey = "freq_hz";
 
+    let tRpcLoading = false;
+
     const colors = ['#00e047'];
     // console.table(data.squareWave);
+
 </script>
 
 <p>Graph</p>
+<ScopeLaunchFetcher />
+<div class="slider-container">
+  <ScopePoints />
+</div>
 <div class="chart-container">
   <SyncedBrushWrapper
     data={data.squareWave}
@@ -22,6 +35,8 @@
   />
   <p color="white">X axis: time (s)</p>
   <p>Y axis: frequency (hz)</p>
+  <!-- <Button color="secondary" on:click={loadData}><Label>Get data from server</Label></Button>
+  <p>{banana}</p> -->
 </div>
 
 <style>
@@ -38,5 +53,9 @@
       flex-wrap: wrap;
       justify-content: space-between;
       align-content: space-between;
+    }
+
+    .slider-container {
+      width: 60%;
     }
   </style>

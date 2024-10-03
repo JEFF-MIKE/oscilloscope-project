@@ -18,6 +18,7 @@
 	"devDependencies": {
 		"@mdi/js": "^7.4.47",
 		"@smui/button": "^7.0.0",
+		"@smui/slider": "^7.0.0",
 		"@smui/top-app-bar": "^7.0.0",
 		"@sveltejs/adapter-auto": "^3.0.0",
 		"@sveltejs/kit": "^2.0.0",
@@ -43,9 +44,11 @@
 		"@smui-extra/bottom-app-bar": "^7.0.0",
 		"@trpc/client": "^10.45.2",
 		"@trpc/server": "^10.45.2",
+		"dotenv": "^16.4.5",
 		"layercake": "^8.4.0-beta.1",
 		"node-ni-visa": "^0.5.0",
 		"trpc-sveltekit": "^3.6.2",
-		"yootils": "^0.3.1"
+		"yootils": "^0.3.1",
+		"zod": "^3.23.8"
 	}
 }
