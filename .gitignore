@@ -73,3 +73,7 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# These will be added at the build stage: gitignore them
+_smui-*
+smui*
