@@ -1,7 +1,9 @@
 import { initTRPC } from '@trpc/server'; 
 import type { Context } from '$lib/server/context';
+import { TRPCError } from '@trpc/server';
 import { scopeAcquireGraphData, scopeGenericQueryHandler, scopeGenericWriteHandler } from './scopeFunctions/scopeFunctions';
 import z from 'zod';
+import { createNewSession, sessionList} from './scopeFunctions/scopeSessionFunctions';
 
 const tRpcServer = initTRPC.context<Context>().create();
 
@@ -9,20 +11,60 @@ const scopeInputSchema = z.object({
     message: z.string()
 });
 
+const connectionProcedure = tRpcServer.procedure.use(async function isNIVisaDeviceConnected(opts) {
+    if (sessionList.length === 0) {
+        try {
+            createNewSession();
+        } catch (err) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: "Couldn't establish connection to NIVisa device!",
+                cause: err
+            });
+        }
+    }
+    return opts.next({
+        ctx: {
+            deviceSession: sessionList[0],
+        }
+    });
+});
 
 export const router = tRpcServer.router({
-    example: tRpcServer.procedure.query(async ({ctx: {deviceSession, visaDriver }}) => {
-        return `Hello from tRPC server: Your device session is: ${deviceSession} and your visa driver is: ${visaDriver}`;
+    example: connectionProcedure.query(async ({ctx: { deviceSession }}) => {
+        return `Hello from tRPC server: Your device session is: ${deviceSession}`;
     }),
-    scopeGenericQueryHandler: tRpcServer.procedure.input(scopeInputSchema).query(async ({ ctx: { deviceSession }, input: { message } }) => {
+    scopeGenericQueryHandler: connectionProcedure.input(scopeInputSchema).query(async ({ ctx: { deviceSession }, input: { message } }) => {
         console.log(`Querying device with message: ${message}`);
-        return scopeGenericQueryHandler(deviceSession, message);
+        let response;
+        try {
+            response = scopeGenericQueryHandler(deviceSession, message);
+        } catch (err) {
+            // Convert this to an error thrown by tRPC server.
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: "An unexpected error executing your request, please try again later!",
+                cause: err
+            });
+        }
+        return response;
     }),
-    scopeGenericWriteHandler: tRpcServer.procedure.input(scopeInputSchema).mutation(async ({ ctx: { deviceSession }, input: { message } }) => {
+    scopeGenericWriteHandler: connectionProcedure.input(scopeInputSchema).mutation(async ({ ctx: { deviceSession }, input: { message } }) => {
         console.log(`Server: Writing to device with message: ${message}`);
-        return scopeGenericWriteHandler(deviceSession, message);
+        let response;
+        try {
+            response = scopeGenericWriteHandler(deviceSession, message);
+        } catch (err) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: "An unexpected error occured with executing your command, please try again later!",
+                cause: err
+            })
+        }
+        return response;
     }),
-    scopeAcquireGraphData: tRpcServer.procedure.query(async ({ ctx: { deviceSession } }) => {
+    scopeAcquireGraphData: connectionProcedure.query(async ({ ctx: { deviceSession } }) => {
+        // Graph data aquisition is more tedious, encapsulate it in a function of its own
         scopeAcquireGraphData(deviceSession);
     }),
 });
