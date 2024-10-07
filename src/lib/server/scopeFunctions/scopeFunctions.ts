@@ -18,7 +18,7 @@ export const scopeGenericWriteHandler = (deviceSession: number, message: string)
         }
     } catch (err) {
         console.error(`Server: Error when writing to device: ${err}`);
-        return `An Error occured when writing to the device with command ${message}, error is: ${err}`;
+        throw new Error(`An Error occured when writing to the device with command ${message}, error is: ${err}`);
     }
   };
   
@@ -36,7 +36,7 @@ export const scopeGenericWriteHandler = (deviceSession: number, message: string)
         return response;
     } catch (err) {
         console.error(`Error querying device: ${err}`);
-        return `An Error occured when querying the device with command ${message}, error is: ${err}`;
+        throw new Error(`An Error occured when querying the device with command ${message}, error is: ${err}`);
     }
   };
 
