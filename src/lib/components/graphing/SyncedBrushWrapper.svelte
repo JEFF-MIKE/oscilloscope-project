@@ -74,11 +74,11 @@
       expand to fill it.
     */
     .chart-container {
-      width: 80%;
+      width: 100%;
       height: 60%;
     }
     .brush-container {
-      width: 80%;
+      width: 100%;
       height: 15%;
     }
   </style>

@@ -29,7 +29,6 @@
         }
     }
 
-    
     const setSliderValue = async() => {
         try {
             console.log(`Value is: ${value}`);
@@ -43,7 +42,8 @@
     }
 </script>
 
-<div>
+<div class="slider-wrapper">
+    <div class="slider">
     {#await getSliderValue()}
         <p>Getting number of points...</p>
     {:then _}
@@ -57,7 +57,31 @@
     {:catch error}
         <p>Error getting waveform points mode: {error.message}</p>
     {/await}
-
-    <Slider bind:value min={100} max={80000} step={100} discrete/>
-    <Button on:click={setSliderValue} variant="raised"><Label>Set number of points to {value}</Label></Button>
+        <Slider bind:value min={100} max={80000} step={100} discrete/>
+    </div>
+    <div class="slider-button">
+        <Button on:click={setSliderValue} variant="raised"><Label>Set number of points to {value}</Label></Button>
+    </div>
 </div>
+
+<style>
+    .slider-wrapper {
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    }
+
+    .slider {
+        flex: 3;
+    }
+
+    .slider-button {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>

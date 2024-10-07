@@ -1,8 +1,5 @@
 <script lang="ts">
     import SyncedBrushWrapper from '$lib/components/graphing/SyncedBrushWrapper.svelte';
-    import { page } from '$app/stores';
-    import { trpc } from '$lib/trpc.js';
-    import Button, { Label } from '@smui/button';
     import ScopeLaunchFetcher from '$lib/components/graphing/scopeData/ScopeLaunchFetcher.svelte';
 	  import ScopePoints from '$lib/components/graphing/scopeData/ScopePoints.svelte';
 
@@ -19,7 +16,7 @@
 
 </script>
 
-<p>Graph</p>
+<h4 class="mdc-typography--headline4 ">Graph Page</h4>
 <ScopeLaunchFetcher />
 <div class="slider-container">
   <ScopePoints />
@@ -35,8 +32,6 @@
   />
   <p color="white">X axis: time (s)</p>
   <p>Y axis: frequency (hz)</p>
-  <!-- <Button color="secondary" on:click={loadData}><Label>Get data from server</Label></Button>
-  <p>{banana}</p> -->
 </div>
 
 <style>
@@ -47,15 +42,13 @@
       expand to fill it.
     */
     .chart-container {
-      width: 100%;
+      width: 80%;
       height: 500px;
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
       align-content: space-between;
-    }
-
-    .slider-container {
-      width: 60%;
+      margin-left: 10%;
+      margin-right: 10%;
     }
   </style>
