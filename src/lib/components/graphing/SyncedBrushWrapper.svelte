@@ -65,7 +65,7 @@
   <style>
     .chart-wrapper {
       width: 100%;
-      height: 100%;
+      height: 75%;
     }
     /*
       The wrapper div needs to have an explicit width and height in CSS.
@@ -75,10 +75,10 @@
     */
     .chart-container {
       width: 100%;
-      height: 60%;
+      height: 80%;
     }
     .brush-container {
       width: 100%;
-      height: 15%;
+      height: 20%;
     }
   </style>

@@ -4,63 +4,67 @@
     import { trpc } from '$lib/trpc';
     import { page } from '$app/stores';
     let value = 100;
-    let scopePointsValue = 0;
-    
-    // TODO: make this part an enum
-    let waveformPointsMode = "Unknown";
-
-    // note: TRPC should have better responses
-    const getSliderValue = async () => {
-        try {
-            const response = await trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
-            scopePointsValue= Number(response.replace(/\n/, ""));
-            console.log(`Points are: ${scopePointsValue}`);
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
-    const getWaveformPointsMode = async () => {
-        try {
-            const response = await trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
-            waveformPointsMode = response.replace(/\n/, "");
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
+    let waveformPointsMode = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS:MODE?\n"});
+    let sliderValue = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
     const setSliderValue = async() => {
         try {
             console.log(`Value is: ${value}`);
             const response = await trpc($page).scopeGenericWriteHandler.mutate({message: `:WAVEFORM:POINTS ${value}\n`});
             console.log(`Client: Response from server:${response.replace(/\n/, "")}`);
-            // Since this is successful here, set the previous scopePointsValue to the newly set value
-            scopePointsValue = value;
+            sliderValue = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
         } catch (error) {
             console.error(error);
         }
     }
+
+    const setSliderMode = async(mode) => {
+        try {
+            console.log(`mode is: ${JSON.stringify(mode)}`);
+            const response = await trpc($page).scopeGenericWriteHandler.mutate({message: `:WAVEFORM:POINTS:MODE ${mode}\n`});
+            console.log(`Client: Response from server:${response.replace(/\n/, "")}`);
+            waveformPointsMode = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS:MODE?\n"});
+        } catch(err) {
+            console.log(err);
+        }
+    }
+
 </script>
 
 <div class="slider-wrapper">
-    <div class="slider">
-    {#await getSliderValue()}
-        <p>Getting number of points...</p>
-    {:then _}
-        <p>Current Number of Points on Scope: {scopePointsValue}</p>
-    {:catch error}
-        <p>Error getting number of points: {error.message}</p>
-    {/await}
-
-    {#await getWaveformPointsMode()}
-        <p>Waveform Points Mode: {waveformPointsMode}</p>
-    {:catch error}
-        <p>Error getting waveform points mode: {error.message}</p>
-    {/await}
-        <Slider bind:value min={100} max={80000} step={100} discrete/>
+    <div class="waveform-mode-container">
+        <div class="waveform-status-action">
+        {#await waveformPointsMode}
+            <p>Getting waveform points mode... </p>
+        {:then pointsMode}
+            <p>Waveform Points Mode: {pointsMode}</p>
+        {:catch error}
+            <p>Error getting waveform points mode: <span class="error">{error.message}</span></p>
+        {/await}
+        </div>
+        <div class="button-container">
+            <Button variant="raised" on:click={() => setSliderMode("Normal")}><Label>Normal</Label></Button>
+            <Button variant="raised" on:click={() => setSliderMode("Maximum")}><Label>Maximum</Label></Button>
+            <Button variant="raised" on:click={() => setSliderMode("Raw")}><Label>Raw</Label></Button>
+        </div>
     </div>
-    <div class="slider-button">
-        <Button on:click={setSliderValue} variant="raised"><Label>Set number of points to {value}</Label></Button>
+    <div class="waveform-points-container">
+        <div class="waveform-mode-container">
+            <div class="waveform-status-action">
+            {#await sliderValue}
+                <p>Getting number of points...</p>
+            {:then scopePoints}
+                <p>Current Number of Points on Scope: {scopePoints}</p>
+            {:catch error}
+                <p class="error">Error getting number of points: {error.message}</p>
+            {/await}
+            </div>
+            <div class="button-container single-button">
+                <Button on:click={setSliderValue} variant="raised"><Label>Set number of points to {value}</Label></Button>
+            </div>
+        </div>
+        <div class="slider">
+            <Slider bind:value min={100} max={80000} step={100} discrete/>
+        </div>
     </div>
 </div>
 
@@ -70,18 +74,33 @@
     margin-left: auto;
     margin-right: auto;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    }
+
+    .waveform-status-action {
+        flex: 3;
+    }
+
+    .button-container {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .single-button {
+        justify-content: center;
     }
 
     .slider {
         flex: 3;
     }
 
-    .slider-button {
-        flex: 1;
+    .waveform-mode-container, .waveform-points-container, .waveform-status-action {
         display: flex;
-        justify-content: center;
-        align-items: center;
+        justify-content: space-between;
+    }
+    .waveform-points-container {
+        flex-direction: column;
     }
 </style>

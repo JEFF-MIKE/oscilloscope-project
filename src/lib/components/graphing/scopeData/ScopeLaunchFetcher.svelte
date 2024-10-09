@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/stores';
   import { trpc } from '$lib/trpc';
-  import { mdiCheck, mdiAlphaX, mdiAlertCircle } from "@mdi/js";
+  import { mdiCheck, mdiAlertCircle } from "@mdi/js";
   import Button, { Label } from '@smui/button';
+  import CircularProgress from '@smui/circular-progress';
 
   // We want to reset the scope, in order for it to be set to a known state
   let resetResponse = trpc($page).scopeGenericWriteHandler.mutate({ message: "*RST\n" });
@@ -26,6 +27,7 @@
     {#if resetResponse}
       {#await resetResponse}
         <p>Resetting...</p>
+        <CircularProgress style="width: 24px; height: 24px;" indeterminate />
       {:then response}
         <p>Reset response: <span class="success">{response}</span></p>
         <svg viewBox="0 0 24 24" fill="green" width="24" height="24">
@@ -43,6 +45,7 @@
     {#if scopeIdentity}
     {#await scopeIdentity}
         <p>Getting scope identity...</p>
+        <CircularProgress style="width: 24px; height: 24px;" indeterminate />
       {:then response}
         <p>Scope identity: <span class="success">{response}</span></p>
         <svg viewBox="0 0 24 24" fill="green" width="24" height="24">
@@ -60,6 +63,7 @@
     {#if scopeAcquireMode}
       {#await scopeAcquireMode}
         <p>Getting scope acquire mode...</p>
+        <CircularProgress style="width: 24px; height: 24px;" indeterminate />
       {:then response}
         <p>Scope acquire mode: <span class="success">{response}</span></p>
         <svg viewBox="0 0 24 24" fill="green" width="24" height="24">
