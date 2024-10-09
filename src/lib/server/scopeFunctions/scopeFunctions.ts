@@ -1,4 +1,6 @@
 import * as NIVisa from 'node-ni-visa';
+import type { GraphDataPoint } from '$lib/types/GraphTypes';
+import { getRandomNumber } from '../randomNumber/randomNumber';
 
 /**
  * Send a write message to the oscilloscope, including errors with a try/catch
@@ -47,20 +49,27 @@ export const scopeGenericWriteHandler = (deviceSession: number, message: string)
    * 
    */
   export const scopeAcquireGraphData = (deviceSession: number) => {
-    const digitizeResponse = NIVisa.viWrite(deviceSession, ':DIGitize\n');
+    // Perform a digitize command to get the waveform data
 
-    const currentNumPoints = NIVisa.query(deviceSession, ':WAVEFORM:POINTS?\n');
     const HEADER_LENGTH = 10; // represents #800... of response
+    try {
+        const digitizeResponse = NIVisa.viWrite(deviceSession, ':DIGitize\n');
 
-    const waveformPreableData = NIVisa.query(deviceSession, ':WAVEFORM:PREAMBLE?\n');
+        const currentNumPoints = NIVisa.query(deviceSession, ':WAVEFORM:POINTS?\n');
 
-    const processedWaveformData = processWaveformPreamble(waveformPreableData);
+        const waveformPreableData = NIVisa.query(deviceSession, ':WAVEFORM:PREAMBLE?\n');
 
-    const waveFormData = NIVisa.query(deviceSession, ':WAVEFORM:DATA?\n', Number(currentNumPoints.replace(/\n/, '')) + HEADER_LENGTH);
+        const processedWaveformData = processWaveformPreamble(waveformPreableData);
 
-    const coordinates = processWaveformData(waveFormData, processedWaveformData, Number(currentNumPoints.replace(/\n/, '')));
+        const waveFormData = NIVisa.query(deviceSession, ':WAVEFORM:DATA?\n', Number(currentNumPoints.replace(/\n/, '')) + HEADER_LENGTH);
 
-    return coordinates;
+        const coordinates = processWaveformData(waveFormData, processedWaveformData, Number(currentNumPoints.replace(/\n/, '')));
+
+        return coordinates;
+    } catch (err) {
+        console.error(`Error acquiring graph data: ${err}`);
+        throw new Error(`An Error occured when acquiring graph data: ${err}`);
+    }
   }
 
 
@@ -142,4 +151,58 @@ enum WaveformType {
     NORMAL,
     PEAK_DETECT,
     AVERAGE,
+}
+
+/**
+ * Generate a randomized square wave response.
+ * 
+ * This is a helper function: It allows an ideal square wave to be generated without
+ * access to an oscilloscope.
+ * 
+ * @param start_time start time of the square wave
+ * @param end_time end time of the square wave
+ */
+export const generateRandomizedSquareWave = (start_time: number, end_time: number) => {
+    // For now, time is in seconds
+    // high_freq and low_freq are in Hz
+    // for every 1 second, determine whether to raise high, or drop voltage
+    const square_wave_list: GraphDataPoint[] = [];
+    for (let i = start_time; i < end_time; i++) {
+        const random_freq = getRandomNumber(0, 2);
+        // store the generated co-ordinate. We need to see if a rising edge or falling edge is required first.
+        const generatedSqaureWaveCoord = {
+            freq_hz: random_freq,
+            time_seconds: i
+        };
+        if (random_freq === 0) {
+            // this is a single co-ordinate, a straight line of 0 on the x axis.
+            // a straight line is always required.
+            if (square_wave_list.length === 0 || square_wave_list[square_wave_list.length - 1].freq_hz === 0) {
+                square_wave_list.push(generatedSqaureWaveCoord);
+                continue
+            } else {
+                // Previous freq_hz was one. this means this co-ordinate is a falling edge, and needs another co-ordinate to
+                // represent the dropdown.
+                square_wave_list.push({
+                    freq_hz: 1,
+                    time_seconds: i
+                });
+                square_wave_list.push(generatedSqaureWaveCoord);
+            }
+        } else {
+            // random frequency is 1
+            if (square_wave_list.length === 0 || square_wave_list[square_wave_list.length - 1].freq_hz === 1) {
+                square_wave_list.push(generatedSqaureWaveCoord);
+                continue;
+            } else {
+                // Previous freq_hz was 0. this means this co-ordinate is a rising edge, and needs another co-ordinate to
+                // represent the rise.
+                square_wave_list.push({
+                    freq_hz: 0,
+                    time_seconds: i})
+                }
+                square_wave_list.push(generatedSqaureWaveCoord);
+        }
+    }
+    return square_wave_list;
 }

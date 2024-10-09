@@ -1,7 +1,7 @@
 import { initTRPC } from '@trpc/server'; 
 import type { Context } from '$lib/server/context';
 import { TRPCError } from '@trpc/server';
-import { scopeAcquireGraphData, scopeGenericQueryHandler, scopeGenericWriteHandler } from './scopeFunctions/scopeFunctions';
+import { scopeAcquireGraphData, scopeGenericQueryHandler, scopeGenericWriteHandler, generateRandomizedSquareWave } from './scopeFunctions/scopeFunctions';
 import z from 'zod';
 import { createNewSession, sessionList} from './scopeFunctions/scopeSessionFunctions';
 
@@ -65,8 +65,22 @@ export const router = tRpcServer.router({
     }),
     scopeAcquireGraphData: connectionProcedure.query(async ({ ctx: { deviceSession } }) => {
         // Graph data aquisition is more tedious, encapsulate it in a function of its own
-        scopeAcquireGraphData(deviceSession);
+        console.log(`Server: Acquiring graph data...`);
+        let response;
+        try {
+            response = scopeAcquireGraphData(deviceSession);
+        } catch (err) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: "An unexpected error occured with acquiring graph data, please try again later!",
+                cause: err,
+            });
+        }
+        return response;
     }),
+    randomizedWaveformData: tRpcServer.procedure.query(async() => {
+        return generateRandomizedSquareWave(1, 100);
+    })
 });
 
 export const createCaller = tRpcServer.createCallerFactory(router);
