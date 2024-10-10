@@ -3,9 +3,13 @@
     import Button, { Label } from '@smui/button';
     import { trpc } from '$lib/trpc';
     import { page } from '$app/stores';
+	import ScopeStatus from './ScopeStatus.svelte';
+    import { mdiAlert } from '@mdi/js';
+    import Tooltip, { Wrapper } from '@smui/tooltip';
     let value = 100;
     let waveformPointsMode = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS:MODE?\n"});
     let sliderValue = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
+    const waveformModes = ["Normal", "Maximum", "Raw"];
     const setSliderValue = async() => {
         try {
             console.log(`Value is: ${value}`);
@@ -32,34 +36,30 @@
 
 <div class="slider-wrapper">
     <div class="waveform-mode-container">
-        <div class="waveform-status-action">
-        {#await waveformPointsMode}
-            <p>Getting waveform points mode... </p>
-        {:then pointsMode}
-            <p>Waveform Points Mode: {pointsMode}</p>
-        {:catch error}
-            <p>Error getting waveform points mode: <span class="error">{error.message}</span></p>
-        {/await}
+        <div class="waveform-status-wrapper">
+            <ScopeStatus statusPromise={waveformPointsMode} statusLabel="Waveform Points Mode"/>
         </div>
         <div class="button-container">
-            <Button variant="raised" on:click={() => setSliderMode("Normal")}><Label>Normal</Label></Button>
-            <Button variant="raised" on:click={() => setSliderMode("Maximum")}><Label>Maximum</Label></Button>
-            <Button variant="raised" on:click={() => setSliderMode("Raw")}><Label>Raw</Label></Button>
+            {#each waveformModes as mode}
+                <Button on:click={() => setSliderMode(mode)} variant="raised"><Label>{mode}</Label></Button>
+            {/each}
         </div>
     </div>
     <div class="waveform-points-container">
         <div class="waveform-mode-container">
-            <div class="waveform-status-action">
-            {#await sliderValue}
-                <p>Getting number of points...</p>
-            {:then scopePoints}
-                <p>Current Number of Points on Scope: {scopePoints}</p>
-            {:catch error}
-                <p class="error">Error getting number of points: {error.message}</p>
-            {/await}
+            <div class="waveform-status-wrapper">
+                <ScopeStatus statusPromise={sliderValue} statusLabel="Number of Points"/>
             </div>
             <div class="button-container single-button">
                 <Button on:click={setSliderValue} variant="raised"><Label>Set number of points to {value}</Label></Button>
+                {#if value > 20000}
+                    <Wrapper>
+                    <svg viewBox="0 0 24 24" fill="orange" width="24" height="24">
+                        <path d={mdiAlert} />
+                    </svg>
+                    <Tooltip>Setting the number of points beyond 20000 may cause performance issues for the browser</Tooltip>
+                    </Wrapper>
+                {/if}
             </div>
         </div>
         <div class="slider">
@@ -70,33 +70,35 @@
 
 <style>
     .slider-wrapper {
-    width: 80%;
-    margin-left: auto;
-    margin-right: auto;
-    display: flex;
-    flex-direction: column;
+        width: 80%;
+        margin-left: auto;
+        margin-right: auto;
+        display: flex;
+        flex-direction: column;
     }
 
-    .waveform-status-action {
+    .waveform-status-wrapper {
         flex: 3;
     }
 
     .button-container {
         flex: 1;
         display: flex;
-        justify-content: space-between;
+        flex-wrap: wrap;
+        justify-content: space-evenly;
         align-items: center;
     }
-    
-    .single-button {
-        justify-content: center;
-    }
+
 
     .slider {
         flex: 3;
     }
 
-    .waveform-mode-container, .waveform-points-container, .waveform-status-action {
+    .single-button {
+        justify-content: space-around;
+    }
+
+    .waveform-mode-container, .waveform-points-container {
         display: flex;
         justify-content: space-between;
     }
