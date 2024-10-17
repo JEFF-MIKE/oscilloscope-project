@@ -27,7 +27,7 @@
     scopeAcquireMode = trpc($page).scopeGenericQueryHandler.query({message: ":ACQUIRE:TYPE?\n"});
 
     // re-assign promiseList to get the new statuses
-    promiseList = [...promiseList];
+    promiseList = [resetResponse, scopeIdentity, scopeAcquireMode];
   }
 </script>
 

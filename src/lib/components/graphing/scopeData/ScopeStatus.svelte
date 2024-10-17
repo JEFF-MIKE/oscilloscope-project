@@ -16,7 +16,7 @@
           <path d={mdiCheck} />
         </svg>
       {:catch error}
-        <p>Error with {statusPromise}: <span class="error-status">{error.message}</span></p>
+        <p>Error with {statusLabel}: <span class="error-status">{error.message}</span></p>
         <svg viewBox="0 0 24 24" fill="red" width="24" height="24">
           <path d={mdiAlertCircle} />
         </svg>

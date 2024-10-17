@@ -77,3 +77,5 @@ vite.config.ts.timestamp-*
 # These will be added at the build stage: gitignore them
 _smui-*
 smui*
+
+legacy_python_code/env_dir/**/*

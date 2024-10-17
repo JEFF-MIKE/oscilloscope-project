@@ -15,7 +15,7 @@
             console.log(`Value is: ${value}`);
             const response = await trpc($page).scopeGenericWriteHandler.mutate({message: `:WAVEFORM:POINTS ${value}\n`});
             console.log(`Client: Response from server:${response.replace(/\n/, "")}`);
-            sliderValue = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS?\n"});
+            sliderValue = Promise.resolve(String(value));
         } catch (error) {
             console.error(error);
         }
@@ -23,7 +23,6 @@
 
     const setSliderMode = async(mode) => {
         try {
-            console.log(`mode is: ${JSON.stringify(mode)}`);
             const response = await trpc($page).scopeGenericWriteHandler.mutate({message: `:WAVEFORM:POINTS:MODE ${mode}\n`});
             console.log(`Client: Response from server:${response.replace(/\n/, "")}`);
             waveformPointsMode = trpc($page).scopeGenericQueryHandler.query({message: ":WAVEFORM:POINTS:MODE?\n"});
